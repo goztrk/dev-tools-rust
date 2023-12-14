@@ -3,6 +3,7 @@ use glob::glob;
 use regex::Regex;
 use std::path::Path;
 use std::process::{self, Command};
+use crate::utils::run_cmd;
 
 #[derive(Args, Debug)]
 pub struct PkgCmd {
@@ -16,11 +17,11 @@ pub struct PkgCmd {
 }
 
 impl PkgCmd {
-    pub fn run(args: &PkgCmd) {
+    pub fn run(&self) {
         PkgCmd::preprocess();
 
-        if args.compile.unwrap_or(false) {
-            PkgCmd::run_cmd("venv/bin/python", &["-m", "pip", "install", "pip-tools"]);
+        if self.compile.unwrap_or(false) {
+            run_cmd("venv/bin/python", &["-m", "pip", "install", "pip-tools"]);
             println!("pip-tools installed");
 
             let mut file_found = false;
@@ -31,7 +32,7 @@ impl PkgCmd {
                     let mut out = path.clone();
                     out.set_extension("txt");
                     let output = out.to_str().unwrap();
-                    PkgCmd::run_cmd(
+                    run_cmd(
                         "venv/bin/pip-compile",
                         &[
                             "--resolver=backtracking",
@@ -49,13 +50,13 @@ impl PkgCmd {
                 eprintln!("No requirements file found.");
             }
         }
-        if args.install.unwrap_or(false) {
+        if self.install.unwrap_or(false) {
             let mut file_found = false;
             for entry in glob("./requirements*.txt").expect("Failed to get requirements*.txt files") {
                 if let Ok(path) = entry {
                     file_found = true;
                     let filename = path.to_str().unwrap();
-                    PkgCmd::run_cmd("venv/bin/python", &["-m", "pip", "install", "-r", filename]);
+                    run_cmd("venv/bin/python", &["-m", "pip", "install", "-r", filename]);
                     println!("Packages in {:?} are now installed", filename);
                 }
             }
@@ -66,22 +67,6 @@ impl PkgCmd {
         }
     }
 
-    fn run_cmd(cmd: &str, args: &[&str]) -> String {
-        let string_args = args.join(" ");
-        let output = Command::new(cmd)
-            .args(args)
-            .output()
-            .expect("Failed to run command");
-
-        if output.status.success() == false {
-            eprintln!("Failed to run command {:?}", [cmd, &string_args].join(" "));
-            eprintln!("{}", String::from_utf8_lossy(&output.stderr));
-            process::exit(1);
-        }
-
-        String::from_utf8(output.stdout).unwrap()
-    }
-
     fn preprocess() {
         // First check if `venv` folder exists
         if Path::new("venv").exists() == false {
@@ -89,7 +74,7 @@ impl PkgCmd {
             process::exit(0)
         }
 
-        let output = PkgCmd::run_cmd("venv/bin/python", &["-m", "pip", "install", "--upgrade", "pip"]);
+        let output = run_cmd("venv/bin/python", &["-m", "pip", "install", "--upgrade", "pip"]);
 
         let re_version = Regex::new(r"\((?P<version>\d+\.\d+\.\d+)\)").unwrap();
         let re_new = Regex::new(r"Successfully installed pip-(?P<version>\d+\.\d+\.\d+)").unwrap();

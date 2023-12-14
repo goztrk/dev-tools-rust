@@ -2,6 +2,7 @@ use clap::{Parser, Subcommand};
 use cmds::PkgCmd;
 
 mod cmds;
+mod utils;
 
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)]
@@ -20,8 +21,8 @@ fn main() {
     let cli = Cli::parse();
 
     match &cli.command {
-        Commands::Pkg(args) => {
-            PkgCmd::run(args);
+        Commands::Pkg(cmd) => {
+            cmd.run();
         }
     }
 }
